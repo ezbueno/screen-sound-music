@@ -6,6 +6,8 @@ import developer.ezandro.screensoundmusic.entities.Song;
 import developer.ezandro.screensoundmusic.exception.ArtistNotFoundException;
 import developer.ezandro.screensoundmusic.services.ArtistService;
 import developer.ezandro.screensoundmusic.services.SongService;
+import developer.ezandro.screensoundmusic.services.integration.ArtistInfoFetchException;
+import developer.ezandro.screensoundmusic.services.integration.ChatGptClient;
 import developer.ezandro.screensoundmusic.utils.ConsoleFormatter;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,8 @@ import java.util.Scanner;
 public class ConsoleMenu {
     private static final Scanner SCANNER = new Scanner(System.in);
     private static final String FIELD_MUST_NOT_BE_BLANK = "%nERROR: Field '%s' must not be blank.%n";
+    private static final String ENTER_ARTIST_NAME = "Enter artist name: ";
+    private static final String ARTIST_NAME = "ARTIST NAME";
     private final ArtistService artistService;
     private final SongService songService;
 
@@ -50,7 +54,7 @@ public class ConsoleMenu {
         System.out.println("""
                 
                 === Program terminated ===
-                Thank you for using Room Booking System.
+                Thank you for using Screen Sound Music.
                 Have a great day!
                 """);
     }
@@ -86,23 +90,29 @@ public class ConsoleMenu {
 
     private void handleOption(int option) {
         switch (option) {
-            case 1 -> this.handleAddUser();
-            case 2 -> this.handleAddMusic();
-            case 3 -> this.handleListSongs();
-            case 4 -> { /* todo */ }
-            case 5 -> { /* todo */ }
-            default -> throw new IllegalStateException("Unexpected value: " + option);
+            case 1 ->
+                    this.handleAddUser();
+            case 2 ->
+                    this.handleAddMusic();
+            case 3 ->
+                    this.handleListSongs();
+            case 4 ->
+                    this.handleSearchSongsByArtist();
+            case 5 ->
+                    this.handleSearchArtistInfo();
+            default ->
+                    throw new IllegalStateException("Unexpected value: " + option);
         }
     }
 
     private void handleAddUser() {
         while (true) {
             try {
-                String name = this.promptRequiredArtistName("Enter artist name: ", "ARTIST NAME");
+                String name = this.promptRequiredArtistName(ENTER_ARTIST_NAME, ARTIST_NAME);
                 ArtistType artistType = this.promptForArtistType();
 
                 Artist artist = this.artistService.createArtist(name, artistType);
-                System.out.printf("Artist '%s' created successfully!%n", artist.getName().toUpperCase());
+                System.out.printf("Artist '%s' was created successfully!%n", artist.getName().toUpperCase());
 
                 if (!askToContinue()) {
                     this.showMenu();
@@ -120,6 +130,7 @@ public class ConsoleMenu {
         if (artists.isEmpty()) {
             System.out.println("No artists found. Please add an artist first.");
             this.showMenu();
+            return;
         }
 
         ConsoleFormatter.printArtistList(artists);
@@ -127,14 +138,13 @@ public class ConsoleMenu {
         boolean isValidId = false;
         while (!isValidId) {
             try {
-                String inputId = this.promptRequiredArtistId();
-                Integer artistId = Integer.parseInt(inputId);
+                Integer artistId = this.promptRequiredArtistId();
 
                 Artist artist = this.artistService.findArtistById(artistId);
                 String title = this.promptRequiredSongTitle();
 
                 Song song = this.songService.createSong(title, artist);
-                System.out.printf("Song '%s' created successfully!%n", song.getTitle());
+                System.out.printf("Song '%s' was created successfully!%n", song.getTitle());
                 isValidId = true;
                 this.showMenu();
             } catch (ArtistNotFoundException e) {
@@ -144,12 +154,16 @@ public class ConsoleMenu {
     }
 
     private String promptRequiredArtistName(String prompt, String fieldName) {
-        String input;
+        String input = "";
         do {
-            System.out.print(prompt);
-            input = SCANNER.nextLine().trim();
-            if (input.isEmpty()) {
-                System.out.printf(FIELD_MUST_NOT_BE_BLANK, fieldName);
+            try {
+                System.out.print(prompt);
+                input = SCANNER.nextLine().trim();
+                if (input.isEmpty()) {
+                    System.out.printf(FIELD_MUST_NOT_BE_BLANK, fieldName);
+                }
+            } catch (NumberFormatException _) {
+                SCANNER.nextLine();
             }
         } while (input.isEmpty());
         return input;
@@ -183,51 +197,83 @@ public class ConsoleMenu {
         } while (true);
     }
 
-    private String promptRequiredArtistId() {
-        String input;
-        do {
+    private Integer promptRequiredArtistId() {
+        String input = "";
+        Integer artistId = 0;
+        boolean isValidId = false;
+
+        while (!isValidId) {
             System.out.print("Enter artist ID: ");
             input = SCANNER.nextLine().trim();
             if (input.isEmpty()) {
                 System.out.printf(FIELD_MUST_NOT_BE_BLANK, "ARTIST ID");
+                continue;
             }
-        } while (input.isEmpty());
-        return input;
+
+            try {
+                artistId = Integer.parseInt(input);
+                isValidId = true;
+            } catch (NumberFormatException _) {
+                System.out.printf("%nERROR: Field '%s' must be a valid number.%n", "ARTIST ID");
+            }
+        }
+        return artistId;
     }
 
     private String promptRequiredSongTitle() {
-        String songTitle = "";
-        boolean validInput = false;
-
-        while (!validInput) {
-            System.out.print("Enter artist name: ");
-            String input = SCANNER.nextLine().trim();
-
-            if (input.isEmpty()) {
-                System.out.printf(FIELD_MUST_NOT_BE_BLANK, "ARTIST NAME");
-            } else {
-                Optional<Artist> foundArtist = this.artistService.findByName(input);
-
-                if (foundArtist.isEmpty()) {
-                    System.out.printf("No artist found with the name '%s'.%n", input);
-                } else {
-                    System.out.print("Enter song title: ");
-                    songTitle = SCANNER.nextLine().trim();
-
-                    if (songTitle.isEmpty()) {
-                        System.out.printf("%nERROR: Song title must not be blank.%n");
-                    } else {
-                        validInput = true;
-                    }
-                }
+        String songTitle;
+        do {
+            System.out.print("Enter song title: ");
+            songTitle = SCANNER.nextLine().trim();
+            if (songTitle.isEmpty()) {
+                System.out.printf("%nERROR: Song title must not be blank.%n");
             }
-        }
+        } while (songTitle.isEmpty());
         return songTitle;
     }
 
+
     private void handleListSongs() {
         List<Song> songs = this.songService.getAllSongs();
-        ConsoleFormatter.printSongList(songs);
+
+        if (songs.isEmpty()) {
+            System.out.println("No songs available in the library.");
+        } else {
+            ConsoleFormatter.printSongList("Available Songs", songs);
+        }
+        this.showMenu();
+    }
+
+    private void handleSearchSongsByArtist() {
+        String artistName = this.promptRequiredArtistName(ENTER_ARTIST_NAME, ARTIST_NAME);
+        List<Song> songs = this.songService.searchSongs(artistName);
+
+        if (songs.isEmpty()) {
+            System.out.printf("No songs found for artist '%s'.%n", artistName);
+        } else {
+            String artist = songs.getFirst().getArtist().getName();
+            ConsoleFormatter.printSongList("Songs by " + artist, songs);
+        }
+        this.showMenu();
+    }
+
+    private void handleSearchArtistInfo() {
+        String artistName = this.promptRequiredArtistName(ENTER_ARTIST_NAME, ARTIST_NAME);
+
+        Optional<Artist> artist = artistService.findByName(artistName);
+
+        if (artist.isPresent()) {
+            try {
+                System.out.println("Searching for artist information...\n");
+                String bio = ChatGptClient.fetchArtistInformation(artistName);
+                ConsoleFormatter.printArtistInfo("Artist Information", artist.get().getName(), bio);
+            } catch (ArtistInfoFetchException e) {
+                System.err.println("Error fetching artist info: " + e.getMessage());
+            }
+        } else {
+            System.out.printf("No artist found with the name '%s'.%n", artistName);
+        }
+
         this.showMenu();
     }
 }

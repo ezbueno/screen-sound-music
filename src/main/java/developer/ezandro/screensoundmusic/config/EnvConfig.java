@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 @Component
 public final class EnvConfig {
     private static Dotenv dotenv;
-
     private static String openaiApiKey;
 
     @PostConstruct

@@ -23,4 +23,8 @@ public class SongService {
     public List<Song> getAllSongs() {
         return Collections.unmodifiableList(this.songRepository.findAll());
     }
+
+    public List<Song> searchSongs(String artistName) {
+        return this.songRepository.findByArtistName(artistName);
+    }
 }

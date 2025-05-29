@@ -33,6 +33,6 @@ public class ArtistService {
     }
 
     public Optional<Artist> findByName(String name) {
-        return this.artistRepository.findArtistByName(name);
+        return this.artistRepository.findByName(name);
     }
 }

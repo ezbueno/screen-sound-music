@@ -10,12 +10,16 @@ public class ConsoleFormatter {
     }
 
     public static void printCenteredTitle(String title, int width) {
+        if (title.length() > width - 2) {
+            title = title.substring(0, width - 5) + "..."; // cuts and adds "..." if too long
+        }
+
         String border = "=".repeat(width);
         int paddingSize = (width - 2 - title.length()) / 2;
         String padding = " ".repeat(Math.max(0, paddingSize));
         String line = "|" + padding + title + padding;
 
-        // Ajusta se o comprimento for ímpar
+        // Adjusts if length is odd
         if (line.length() < width - 1) {
             line += " ";
         }
@@ -38,11 +42,12 @@ public class ConsoleFormatter {
                     artist.getArtistType());
         }
 
-        System.out.println(); // linha em branco antes da entrada
+        System.out.println();
     }
 
-    public static void printSongList(List<Song> songs) {
-        printCenteredTitle("Songs Available", 30);
+    public static void printSongList(String title, List<Song> songs) {
+        System.out.println();
+        printCenteredTitle(title, 30);
         System.out.println();
 
         for (Song song : songs) {
@@ -51,5 +56,20 @@ public class ConsoleFormatter {
                     song.getTitle(),
                     song.getArtist().getName());
         }
+    }
+
+    public static void printArtistInfo(String title, String artistName, String details) {
+        int width = 30;
+        printCenteredTitle(title, width);
+
+        String body = """
+                
+                Artist: %s
+                
+                %s
+                """.formatted(artistName, details);
+
+        System.out.println(body);
+        System.out.println();
     }
 }

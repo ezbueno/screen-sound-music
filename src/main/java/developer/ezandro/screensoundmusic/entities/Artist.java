@@ -14,10 +14,11 @@ public class Artist {
     private String name;
     @Enumerated(EnumType.STRING)
     private ArtistType artistType;
-    @OneToMany(mappedBy = "artist")
+    @OneToMany(mappedBy = "artist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Song> songs;
 
-    public Artist() {}
+    public Artist() {
+    }
 
     public Artist(Integer id, String name, ArtistType artistType) {
         this.id = id;
