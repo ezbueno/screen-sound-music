@@ -109,6 +109,14 @@ public class ConsoleMenu {
         while (true) {
             try {
                 String name = this.promptRequiredArtistName(ENTER_ARTIST_NAME, ARTIST_NAME);
+                Optional<Artist> optName = this.artistService.findByName(name.toLowerCase());
+
+                if (optName.isPresent()) {
+                    System.out.printf("The artist '%s' already exists in the database and cannot be added again.%n", optName.get().getName().toUpperCase());
+                    this.showMenu();
+                    return;
+                }
+
                 ArtistType artistType = this.promptForArtistType();
 
                 Artist artist = this.artistService.createArtist(name, artistType);
